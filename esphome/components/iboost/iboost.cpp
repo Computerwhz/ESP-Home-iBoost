@@ -82,9 +82,17 @@ namespace esphome {
         uint32_t rxTimer;
 
         //static uint8_t txStart[] = {CC1101_SIDLE, CC1101_TXFIFO, CC1101_AGCCTRL0};
-        uint8_t txBuf[32];
+        // Sized to fit the 44-byte SENDER frame used by the inhibit override
+        // alongside the existing 29-byte BUDDY frame.
+        uint8_t txBuf[64];
         uint8_t request;
         bool boostRequest;
+        // When true, every received SENDER (0x01) packet is immediately echoed
+        // back with all-zero ADC sample bytes so the iBoost main unit's most-
+        // recent "current at meter" reading is zero and it stops diverting.
+        // Toggled at runtime via set_inhibit() (typically from a template
+        // switch in YAML).
+        bool inhibitActive = false;
         uint8_t address[2]; // this is the address of the sender
         uint8_t addressLQI, rxLQI; // signal strength test 
         bool addressValid;
@@ -189,6 +197,13 @@ namespace esphome {
         void iBoost::boost(uint8_t boost_time) {
             boostTime = boost_time;
             boostRequest = true;
+        }
+
+        void iBoost::set_inhibit(bool v) {
+            inhibitActive = v;
+            ESP_LOGI(TAG, "Inhibit %s",
+                     v ? "ENABLED — will spoof zero-magnitude SENDER packets"
+                       : "disabled");
         }
 
         void iBoost::update() {
@@ -388,7 +403,33 @@ namespace esphome {
                     // Battery low flag is bit 1 of SENDER packet byte[3]
                     static const uint8_t SENDER_FLAG_BATTERY_LOW = 0x02;
 
-                    batteryLow = (packet[3] & SENDER_FLAG_BATTERY_LOW) != 0;   
+                    batteryLow = (packet[3] & SENDER_FLAG_BATTERY_LOW) != 0;
+
+                    // Inhibit override: race the iBoost main unit by transmitting
+                    // an identical-address SENDER packet with all-zero ADC sample
+                    // bytes. The iBoost takes the most recent SENDER reading, so
+                    // this drops perceived meter current to ~0 and stops diversion
+                    // for as long as inhibit is held on. Battery-low flag is
+                    // preserved so the receiver still sees sender health
+                    // unchanged.
+                    if (inhibitActive) {
+                        memset(txBuf, 0, sizeof(txBuf));
+                        txBuf[1] = packet[0];
+                        txBuf[2] = packet[1];
+                        txBuf[3] = PACKET_SENDER;
+                        txBuf[4] = packet[3] & SENDER_FLAG_BATTERY_LOW;
+                        // txBuf[5..44] left at zero (no current samples)
+                        radio.strobe(CC1101_SIDLE);
+                        radio.writeRegister(CC1101_TXFIFO, 0x2c); // length 44
+                        radio.writeBurstRegister(CC1101_TXFIFO, txBuf + 1, 44);
+                        radio.strobe(CC1101_STX);
+                        delay(5);
+                        radio.strobe(CC1101_SWOR);
+                        delay(5);
+                        radio.strobe(CC1101_SFRX);
+                        radio.strobe(CC1101_SIDLE);
+                        radio.strobe(CC1101_SRX);
+                    }
                 }
                 rxState = RXSTATE_WAIT_FOR_PACKET; // no update so wait for a new packet
                 break;

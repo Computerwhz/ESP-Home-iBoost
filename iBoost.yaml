@@ -171,4 +171,23 @@ number:
     initial_value: 15
     min_value: 0
     max_value: 120
-    step: 15  
+    step: 15
+
+# Optional: iBoost Inhibit switch.
+# When ON, the firmware echoes every received SENDER packet back with
+# zero-magnitude ADC samples, which makes the iBoost main unit think no
+# grid current is flowing and stop diverting to the immersion. Useful for
+# pausing diversion during paid-export periods (e.g. driven by a Home
+# Assistant automation watching export rates / battery-export windows).
+# Normal solar diversion is unaffected when the switch is OFF.
+switch:
+  - platform: template
+    name: "iBoost Inhibit"
+    id: iboost_inhibit
+    icon: "mdi:cancel"
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    turn_on_action:
+      - lambda: 'id(iboost_iboost_id)->set_inhibit(true);'
+    turn_off_action:
+      - lambda: 'id(iboost_iboost_id)->set_inhibit(false);'

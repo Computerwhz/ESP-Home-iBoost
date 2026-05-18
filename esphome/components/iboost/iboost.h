@@ -106,7 +106,9 @@ class iBoost : public PollingComponent {
   void loop() override;
   void update() override;
   void boost(uint8_t boost_time);
-  
+  void set_inhibit(bool v);
+
+
 
     void set_heating_import(sensor::Sensor *sensor) { heating_import = sensor; }
     void set_heating_power(sensor::Sensor *sensor) { heating_power = sensor; }
