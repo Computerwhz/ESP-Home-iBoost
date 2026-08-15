@@ -197,6 +197,7 @@ class CC1101 : public Component {
 		// The 2 bytes appended by the hardware to a received packet.
 		// contains rssi and lqi values of the last getPacket() operation.
 		byte status[2];
+		bool healthy_{true};
 
 	//public:
 		CC1101(const byte _csn=SS,
@@ -361,6 +362,8 @@ class CC1101 : public Component {
 		// This is the buffer size of the CC1101 fifo. This library limits the payload to 61 bytes,
 		// the other 3 bytes are for CRC-OK and LQI-RSSI report
 		static const byte BUFFER_SIZE = 64;
+
+		bool is_healthy() const { return healthy_; }
 };
 }  // namespace cc1101
 }  // namespace esphome

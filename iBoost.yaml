@@ -68,16 +68,16 @@ sensor:
     id: iboost_iboost_id
     
     heating_import:
-      name: "iBoost Import"
+      name: "Net Grid Power"
       unit_of_measurement: "W"
       accuracy_decimals: 0
-      icon: "mdi:solar-power"
+      icon: "mdi:transmission-tower"
 
     heating_power:
       name: "iBoost Power"
       unit_of_measurement: "W"
       accuracy_decimals: 0
-      icon: "mdi:solar-power"
+      icon: "mdi:water-boiler"
       device_class: power
 
     heating_today:
@@ -85,14 +85,14 @@ sensor:
       unit_of_measurement: "Wh"
       accuracy_decimals: 0
       device_class: energy
-      icon: "mdi:solar-power"
+      icon: "mdi:calendar-today"
       state_class: total_increasing
 
     heating_yesterday:
       name: "iBoost Yesterday"
       unit_of_measurement: "Wh"
       accuracy_decimals: 0
-      icon: "mdi:solar-power"
+      icon: "mdi:calendar-arrow-left"
       device_class: energy
       state_class: total_increasing
 
@@ -100,7 +100,7 @@ sensor:
       name: "iBoost Last 7 Days"
       unit_of_measurement: "Wh"
       accuracy_decimals: 0
-      icon: "mdi:solar-power"
+      icon: "mdi:calendar-week"
       state_class: total_increasing
       device_class: energy
 
@@ -108,7 +108,7 @@ sensor:
       name: "iBoost Last 28 Days"
       unit_of_measurement: "Wh"
       accuracy_decimals: 0
-      icon: "mdi:solar-power"
+      icon: "mdi:calendar-month"
       device_class: energy
       state_class: total_increasing
 
@@ -116,7 +116,7 @@ sensor:
       name: "iBoost Total"
       unit_of_measurement: "Wh"
       accuracy_decimals: 0
-      icon: "mdi:solar-power"
+      icon: "mdi:counter"
       device_class: energy
       state_class: total_increasing
 
@@ -125,7 +125,7 @@ sensor:
       unit_of_measurement: "min"
       accuracy_decimals: 0
       device_class: duration
-      icon: "mdi:solar-power"
+      icon: "mdi:timer-outline"
 
 # Ensure `text_sensor:` is at the correct level
 #text_sensor:
@@ -134,11 +134,16 @@ sensor:
 #  - platform: iboost
     heating_mode:
       name: "iBoost Mode"
-      icon: "mdi:solar-power"
+      icon: "mdi:state-machine"
 
     heating_warn:
       name: "iBoost Warn"
-      icon: "mdi:solar-power"
+      icon: "mdi:alert-outline"
+
+    water_tank_hot:
+      name: "Water Tank Hot"
+      device_class: heat
+      icon: "mdi:water-boiler"
 
 
 
@@ -147,7 +152,7 @@ button:
   - platform: template
     name: "iBoost Manual Boost START"
     id: BoostStart
-    icon: "mdi:solar-power"
+    icon: "mdi:play-circle-outline"
     on_press:
       then:
         - lambda: |-
@@ -156,7 +161,7 @@ button:
   - platform: template
     name: "iBoost Manual Boost CANCEL"
     id: BoostCancel
-    icon: "mdi:solar-power"
+    icon: "mdi:stop-circle-outline"
     on_press:
       then:
         - lambda: |-
@@ -166,7 +171,7 @@ number:
   - platform : template
     name: "iBoost Manual Boost Time"
     id: boostTime
-    icon: "mdi:solar-power"
+    icon: "mdi:timer-outline"
     unit_of_measurement: "Minutes" 
     optimistic: true
     initial_value: 15
@@ -185,7 +190,7 @@ switch:
   - platform: template
     name: "iBoost Inhibit"
     id: iboost_inhibit
-    icon: "mdi:cancel"
+    icon: "mdi:power-plug-off"
     optimistic: true
     restore_mode: ALWAYS_OFF
     turn_on_action:

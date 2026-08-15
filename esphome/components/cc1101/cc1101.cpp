@@ -193,6 +193,7 @@ void CC1101::reset (void) {
 
 // CC1101 pin & registers initialization
 void CC1101::begin(const uint32_t freq) {
+    healthy_ = true;
     pinMode(MISOpin, INPUT);
     //pinMode(GDO0pin, INPUT);
     pinMode(CSNpin, OUTPUT);
@@ -323,6 +324,7 @@ void CC1101::setRXstate(void) {
                 ESP_LOGE(TAG, "Timed out entering RX state. Check CC1101 wiring and power.");
                 logged_timeout = true;
             }
+            healthy_ = false;
             break;
         }
         delay(1);
@@ -379,6 +381,7 @@ void CC1101::waitMiso() {
                 ESP_LOGE(TAG, "Timed out waiting for MISO low on GPIO%u. Check CC1101 wiring.", MISOpin);
                 logged_timeout = true;
             }
+            healthy_ = false;
             break;
         }
         delay(1);
@@ -506,6 +509,7 @@ void CC1101::setIDLEstate() {
                 ESP_LOGE(TAG, "Timed out entering IDLE state. Check CC1101 wiring and SPI pins.");
                 logged_timeout = true;
             }
+            healthy_ = false;
             break;
         }
         delay(1);
@@ -566,6 +570,7 @@ byte CC1101::getState() { // we read 2 times due to errata note
                 ESP_LOGE(TAG, "Timed out reading CC1101 state.");
                 logged_timeout = true;
             }
+            healthy_ = false;
             return (state>>4)&0b00111;
         }
         delay(1);

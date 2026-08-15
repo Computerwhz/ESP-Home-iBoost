@@ -64,6 +64,7 @@ SOFTWARE.
 #include "esphome.h"
 #include "esphome/core/log.h"
 #include "esphome/core/component.h"
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/cc1101/cc1101.h"
@@ -79,22 +80,33 @@ static const uint8_t CC1101_CSN_PIN = 5;
 static const uint8_t CC1101_SCK_PIN = 18;
 static const uint8_t CC1101_MISO_PIN = 19;
 static const uint8_t CC1101_MOSI_PIN = 23;
+static const int IBOOST_STATUS_RGB_PIN = 16;
+static const int IBOOST_POWER_LED_PIN = 2;
+static const bool IBOOST_POWER_LED_ACTIVE_HIGH = true;
 #elif defined(USE_ESP8266) || defined(ARDUINO_ARCH_ESP8266) || defined(ESP8266)
 static const uint8_t CC1101_CSN_PIN = D8;
 static const uint8_t CC1101_SCK_PIN = D5;
 static const uint8_t CC1101_MISO_PIN = D2;
 static const uint8_t CC1101_MOSI_PIN = D7;
+static const int IBOOST_STATUS_RGB_PIN = -1;
+static const bool IBOOST_POWER_LED_ACTIVE_HIGH = true;
+#ifdef LED_BUILTIN
+static const int IBOOST_POWER_LED_PIN = LED_BUILTIN;
+#else
+static const int IBOOST_POWER_LED_PIN = -1;
+#endif
 #else
 static const uint8_t CC1101_CSN_PIN = SS;
 static const uint8_t CC1101_SCK_PIN = SCK;
 static const uint8_t CC1101_MISO_PIN = MISO;
 static const uint8_t CC1101_MOSI_PIN = MOSI;
-#endif
-
+static const int IBOOST_STATUS_RGB_PIN = -1;
+static const bool IBOOST_POWER_LED_ACTIVE_HIGH = true;
 #ifdef LED_BUILTIN
-static const int IBOOST_LED_PIN = LED_BUILTIN;
+static const int IBOOST_POWER_LED_PIN = LED_BUILTIN;
 #else
-static const int IBOOST_LED_PIN = -1;
+static const int IBOOST_POWER_LED_PIN = -1;
+#endif
 #endif
 
 
@@ -110,6 +122,7 @@ extern sensor::Sensor *heating_last_gt;
 extern sensor::Sensor *heating_boost_time;
 extern text_sensor::TextSensor *heating_mode;
 extern text_sensor::TextSensor *heating_warn;
+extern binary_sensor::BinarySensor *water_tank_hot;
 
 extern long today, yesterday, last7, last28, total;
 
@@ -140,6 +153,7 @@ class iBoost : public PollingComponent {
     void set_heating_boost_time(sensor::Sensor *sensor) { heating_boost_time = sensor; }
     void set_heating_mode(text_sensor::TextSensor *sensor) { heating_mode = sensor; }
     void set_heating_warn(text_sensor::TextSensor *sensor) { heating_warn = sensor; }
+    void set_water_tank_hot(binary_sensor::BinarySensor *sensor) { water_tank_hot = sensor; }
 
 private:
     sensor::Sensor *heating_import{nullptr};
@@ -152,6 +166,7 @@ private:
     sensor::Sensor *heating_boost_time{nullptr};
     text_sensor::TextSensor *heating_mode{nullptr};
     text_sensor::TextSensor *heating_warn{nullptr};
+    binary_sensor::BinarySensor *water_tank_hot{nullptr};
 
   
   esphome::cc1101::CC1101 radio;

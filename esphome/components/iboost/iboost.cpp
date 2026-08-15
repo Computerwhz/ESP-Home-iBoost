@@ -66,6 +66,10 @@ namespace esphome {
         static const uint8_t BUDDY_REQUEST_PACKET_LEN = 29;
         static const uint8_t SENDER_EXPORT_PACKET_LEN = 44;
         static const uint8_t SENDER_HEARTBEAT_MIN_LEN = 4;
+        static const uint8_t STATUS_LED_BRIGHTNESS = 24;
+        static const uint32_t STATUS_LED_BLINK_INTERVAL_MS = 500;
+        static const uint32_t POWER_LED_FASTEST_PERIOD_MS = 120;
+        static const uint32_t POWER_LED_SLOWEST_PERIOD_MS = 1000;
         // The original firmware waits around 1s after the last sender packet
         // before querying the iBoost main unit. Sending too soon appears to
         // miss the main unit's listen window even though the sender frame was
@@ -104,6 +108,7 @@ namespace esphome {
         uint8_t address[2]; // this is the address of the sender
         uint8_t addressLQI, rxLQI; // signal strength test 
         bool addressValid;
+        bool haveIboostReply;
 
         byte packet[MAX_PACKET_LEN];
         byte pkt_size;
@@ -112,6 +117,69 @@ namespace esphome {
         char pbuf[32];
         byte boostTime;
         bool waterHeating, cylinderHot, batteryLow, overheat;
+
+        void write_power_led(bool on) {
+            if (IBOOST_POWER_LED_PIN < 0) return;
+            digitalWrite(IBOOST_POWER_LED_PIN,
+                         on == IBOOST_POWER_LED_ACTIVE_HIGH ? HIGH : LOW);
+        }
+
+        void write_status_rgb(uint8_t red, uint8_t green, uint8_t blue) {
+#if defined(USE_ESP32) || defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+            if (IBOOST_STATUS_RGB_PIN >= 0) {
+                rgbLedWrite(IBOOST_STATUS_RGB_PIN, red, green, blue);
+            }
+#else
+            (void) red;
+            (void) green;
+            (void) blue;
+#endif
+        }
+
+        void update_status_led(esphome::cc1101::CC1101 &radio) {
+            const bool blink_on = ((millis() / STATUS_LED_BLINK_INTERVAL_MS) % 2) == 0;
+
+            if (!radio.is_healthy()) {
+                write_status_rgb(STATUS_LED_BRIGHTNESS, 0, 0);  // Solid red = hardware fault
+                return;
+            }
+            if (!haveIboostReply) {
+                write_status_rgb(0, blink_on ? STATUS_LED_BRIGHTNESS : 0, 0);  // Flashing green = initing
+                return;
+            }
+            if (overheat) {
+                write_status_rgb(blink_on ? STATUS_LED_BRIGHTNESS : 0, 0, 0);  // Flashing red = iBoost fault
+                return;
+            }
+            if (inhibitActive) {
+                write_status_rgb(blink_on ? STATUS_LED_BRIGHTNESS : 0,
+                                 blink_on ? STATUS_LED_BRIGHTNESS / 3 : 0, 0);  // Flashing orange = inhibit
+                return;
+            }
+            if (boostTime > 0) {
+                write_status_rgb(0, 0, STATUS_LED_BRIGHTNESS);  // Solid blue = boost
+                return;
+            }
+            if (waterHeating && heating > 0) {
+                write_status_rgb(0, 0, blink_on ? STATUS_LED_BRIGHTNESS : 0);  // Flashing blue = active heating
+                return;
+            }
+            write_status_rgb(0, STATUS_LED_BRIGHTNESS, 0);  // Solid green = normal / idle
+        }
+
+        void update_power_led() {
+            if (IBOOST_POWER_LED_PIN < 0) return;
+            if (heating <= 0) {
+                write_power_led(false);
+                return;
+            }
+
+            const uint32_t power = static_cast<uint32_t>(heating > 3000 ? 3000 : heating);
+            const uint32_t period = POWER_LED_SLOWEST_PERIOD_MS -
+                ((POWER_LED_SLOWEST_PERIOD_MS - POWER_LED_FASTEST_PERIOD_MS) * power / 3000);
+            const bool on = (millis() % period) < (period / 2);
+            write_power_led(on);
+        }
 
         void iBoost::setup() {
             ESP_LOGI(TAG, "iBoost setup starting");
@@ -135,9 +203,16 @@ namespace esphome {
             if (heating_last_28) heating_last_28 -> publish_state(0);
             if (heating_last_gt) heating_last_gt -> publish_state(0);
             if (heating_boost_time) heating_boost_time -> publish_state(0);
+            if (water_tank_hot) water_tank_hot->publish_state(false);
 
             addressLQI = 255; // set received LQI to lowest value
             addressValid = false;
+            haveIboostReply = false;
+            if (IBOOST_POWER_LED_PIN >= 0) {
+                pinMode(IBOOST_POWER_LED_PIN, OUTPUT);
+                write_power_led(false);
+            }
+            update_status_led(radio);
             ESP_LOGI(TAG, "Starting CC1101 at 868.3MHz");
             radio.begin(868.300e6); // Freq=868.3Mhz. Do not forget the "e6"
             ESP_LOGI(TAG, "SPI OK");
@@ -200,10 +275,7 @@ namespace esphome {
             ESP_LOGI(TAG, "CC1101 configured, entering RX mode");
             radio.setRXstate(); // Set the current state to RX : listening for RF packets
             Serial.println("Radio RX OK");
-            // LED setup. It is important as we can use the module without serial terminal.
-            if (IBOOST_LED_PIN >= 0) {
-                pinMode(IBOOST_LED_PIN, OUTPUT);
-            }
+            update_status_led(radio);
             Serial.println("Setup Finished");
             ESP_LOGI(TAG, "iBoost setup complete");
         }
@@ -231,11 +303,8 @@ namespace esphome {
         }
 
         void iBoost::loop() {
-
-            // Turn on the LED for 200ms without blocking the loop when one is available.
-            if (IBOOST_LED_PIN >= 0) {
-                digitalWrite(IBOOST_LED_PIN, millis() - ledTimer > 200);
-            }
+            update_status_led(radio);
+            update_power_led();
 
             if (addressValid) {
                 if ((millis() - pingTimer > 10000) || boostRequest) { // ping every 10sec
@@ -357,6 +426,7 @@ namespace esphome {
             case RXSTATE_PROCESS_PACKET:
                 Serial.println("Processing Packet");
                 if (packet[2] == PACKET_IBOOST) {
+                    haveIboostReply = true;
                     heating = ( * (short * ) & packet[16]);
                     p1 = ( * (long * ) & packet[18]);
                     p2 = ( * (long * ) & packet[25]); // this depends on the request
@@ -483,6 +553,9 @@ namespace esphome {
                         heating_mode -> publish_state("Heating by Solar");
                     else
                         heating_mode -> publish_state("Water Heating OFF");
+                }
+                if (water_tank_hot != nullptr) {
+                    water_tank_hot->publish_state(cylinderHot);
                 }
                 heating_import -> publish_state(p1 / 360);
                 heating_power -> publish_state(heating);
