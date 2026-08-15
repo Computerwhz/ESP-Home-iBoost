@@ -66,6 +66,8 @@ namespace esphome {
         static const uint8_t BUDDY_REQUEST_PACKET_LEN = 29;
         static const uint8_t SENDER_EXPORT_PACKET_LEN = 44;
         static const uint8_t SENDER_HEARTBEAT_MIN_LEN = 4;
+        static const uint32_t REQUEST_AFTER_PACKET_DELAY_MS = 50;
+        static const uint32_t REQUEST_AFTER_PACKET_WINDOW_MS = 2000;
 
         enum {
             RXSTATE_WAIT_FOR_PACKET,
@@ -231,7 +233,9 @@ namespace esphome {
 
             if (addressValid) {
                 if ((millis() - pingTimer > 10000) || boostRequest) { // ping every 10sec
-                    if ((millis() - rxTimer) > 1000 && (millis() - rxTimer) < 2000) {
+                    const uint32_t since_last_packet = millis() - rxTimer;
+                    if (since_last_packet > REQUEST_AFTER_PACKET_DELAY_MS &&
+                        since_last_packet < REQUEST_AFTER_PACKET_WINDOW_MS) {
                         memset(txBuf, 0, sizeof(txBuf));
                         if ((request < 0xca) ||
                             (request > 0xce)
@@ -260,6 +264,8 @@ namespace esphome {
                         radio.writeRegister(CC1101_TXFIFO, 0x1d); // this is the packet length
 
                         radio.writeBurstRegister(CC1101_TXFIFO, txBuf + 1, 29); // write the data to the TX FIFO
+                        ESP_LOGI(TAG, "Sending iBoost request 0x%02x to addr %02x%02x after %ums idle",
+                                 request, address[0], address[1], since_last_packet);
                         radio.strobe(CC1101_STX);
                         delay(5);
                         radio.strobe(CC1101_SWOR);
@@ -319,6 +325,7 @@ namespace esphome {
                         (packet[2] == PACKET_SENDER && pkt_size >= SENDER_HEARTBEAT_MIN_LEN)  // sender export or heartbeat packet
                     ) {
                         if (rxLQI < addressLQI) { // is the signal stronger than the previous/none
+                            const bool first_address = !addressValid;
                             addressLQI = rxLQI;
                             address[0] = packet[0]; // save the address of the packet	0x1c7b; //
                             address[1] = packet[1];
@@ -327,6 +334,10 @@ namespace esphome {
                                      address[0], address[1],
                                      packet[2] == PACKET_BUDDY ? "buddy" : "sender",
                                      pkt_size, rxLQI);
+                            if (first_address && heating_mode != nullptr) {
+                                heating_mode->publish_state("Sender detected, waiting for iBoost reply");
+                                pingTimer = millis() - 10000;
+                            }
                             Serial.print("Updated the address to:");
                             sprintf(pbuf, "%02x,%02x", address[0], address[1]);
                             Serial.println(pbuf);
