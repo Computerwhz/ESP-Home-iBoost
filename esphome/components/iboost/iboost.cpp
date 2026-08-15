@@ -104,6 +104,8 @@ namespace esphome {
         bool waterHeating, cylinderHot, batteryLow, overheat;
 
         void iBoost::setup() {
+            ESP_LOGI(TAG, "iBoost setup starting");
+
             // Initialize text sensors
             if (heating_mode != nullptr) {
                 heating_mode -> publish_state("Initializing...");
@@ -124,6 +126,7 @@ namespace esphome {
 
             addressLQI = 255; // set received LQI to lowest value
             addressValid = false;
+            ESP_LOGI(TAG, "Initializing SPI bus for CC1101");
         #if defined(USE_ESP32) || defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
             SPI.begin(CC1101_SCK_PIN, CC1101_MISO_PIN, CC1101_MOSI_PIN, CC1101_CSN_PIN);
         #else
@@ -131,8 +134,10 @@ namespace esphome {
         #endif
             Serial.println("SPI OK");
             ESP_LOGW(TAG, "SPI OK");
+            ESP_LOGI(TAG, "Resetting CC1101");
             radio.reset();
             Serial.println("RadioReset");
+            ESP_LOGI(TAG, "Starting CC1101 at 868.3MHz");
             radio.begin(868.300e6); // Freq=868.3Mhz. Do not forget the "e6"
             Serial.println("RadioReg");
             radio.setMaxPktSize(61);
@@ -188,6 +193,7 @@ namespace esphome {
             radio.strobe(CC1101_SPWD); //
 
             Serial.println("Radio OK");
+            ESP_LOGI(TAG, "CC1101 configured, entering RX mode");
             radio.setRXstate(); // Set the current state to RX : listening for RF packets
             Serial.println("Radio RX OK");
             // LED setup. It is important as we can use the module without serial terminal.
@@ -195,7 +201,7 @@ namespace esphome {
                 pinMode(IBOOST_LED_PIN, OUTPUT);
             }
             Serial.println("Setup Finished");
-            ESP_LOGW(TAG, "Setup Finished");
+            ESP_LOGI(TAG, "iBoost setup complete");
         }
 
         void iBoost::boost(uint8_t boost_time) {

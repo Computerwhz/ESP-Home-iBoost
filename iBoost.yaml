@@ -12,10 +12,11 @@ esp32:
     
 external_components:
   - source:
-      type: git
-      url: https://github.com/JNSwanson/ESP-Home-iBoost/
-      #type: local # Alternative.  Clone from git and point to the local files:
-      #path: "C:\\Users\\<your Name>\\iboostSrc\\ESP-Home-iBoost\\esphome\\components" 
+      type: local
+      path: esphome/components
+      # Alternative:
+      # type: git
+      # url: https://github.com/JNSwanson/ESP-Home-iBoost/
     components:
       - cc1101    
       - iboost

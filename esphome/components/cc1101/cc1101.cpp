@@ -57,6 +57,7 @@ On Oct 22, 2016 10:07 PM, "Simon Monk" <srmonk@gmail.com> wrote:
 
 #include <stdarg.h>
 #include <Arduino.h>
+#include "esphome/core/log.h"
 #include "cc1101.h"
 
 #define     WRITE_BURST         0x40                        //write burst
@@ -66,6 +67,8 @@ On Oct 22, 2016 10:07 PM, "Simon Monk" <srmonk@gmail.com> wrote:
 
 namespace esphome {
 namespace cc1101 {
+
+static const char *const TAG = "cc1101";
 
 CC1101::CC1101(const byte _csn, byte wiredToMisoPin, SPIClass& _spi)
 : CSNpin(_csn),MISOpin(wiredToMisoPin), spi(_spi) {
@@ -298,12 +301,22 @@ bool CC1101::sendPacket(const char* msg) {
 // Sends the SRX strobe (if needed) and waits until the state actually goes RX
 // flushes FIFOs if needed
 void CC1101::setRXstate(void) {
+    static bool logged_timeout = false;
+    const uint32_t start = millis();
     while(1) {	
         byte state=getState();
         if      (state==0b001) break; // RX state = 1 SWRS061I doc page 31
         else if (state==0b110) strobe(CC1101_SFRX);
         else if (state==0b111) strobe(CC1101_SFTX);
         strobe(CC1101_SRX);
+        if (millis() - start > 250) {
+            if (!logged_timeout) {
+                ESP_LOGE(TAG, "Timed out entering RX state. Check CC1101 wiring and power.");
+                logged_timeout = true;
+            }
+            break;
+        }
+        delay(1);
     }
 }
 
@@ -349,7 +362,18 @@ void CC1101::waitMiso() {
     // The pin is the actual MISO pin EXCEPT when the MCU cannot digitalRead(MISO)
     // if SPI is active (esp8266). In this case we connect another pin with MISO
     // and we digitalRead this instead
-    while (digitalRead(MISOpin)>0);
+    static bool logged_timeout = false;
+    const uint32_t start = millis();
+    while (digitalRead(MISOpin)>0) {
+        if (millis() - start > 250) {
+            if (!logged_timeout) {
+                ESP_LOGE(TAG, "Timed out waiting for MISO low on GPIO%u. Check CC1101 wiring.", MISOpin);
+                logged_timeout = true;
+            }
+            break;
+        }
+        delay(1);
+    }
 }
 
 // Drives CSN to LOW and according to the SPI standard,
@@ -464,8 +488,19 @@ uint8_t CC1101::getLQI() {
 }
 
 void CC1101::setIDLEstate() {
+    static bool logged_timeout = false;
+    const uint32_t start = millis();
     strobe(CC1101_SIDLE);
-    while (getState()!=0); // wait until state is IDLE(=0)
+    while (getState()!=0) {
+        if (millis() - start > 250) {
+            if (!logged_timeout) {
+                ESP_LOGE(TAG, "Timed out entering IDLE state. Check CC1101 wiring and SPI pins.");
+                logged_timeout = true;
+            }
+            break;
+        }
+        delay(1);
+    } // wait until state is IDLE(=0)
 }
 
 bool CC1101::printf(const char* fmt, ...) {
@@ -506,7 +541,9 @@ void CC1101::whitening(const bool w) {
 
 // return the state of the chip SWRS061I page 31
 byte CC1101::getState() { // we read 2 times due to errata note
+    static bool logged_timeout = false;
     byte old_state=strobe(CC1101_SNOP);
+    const uint32_t start = millis();
     while(1) {
 		//Serial.print("getState=");
         byte state = strobe(CC1101_SNOP);
@@ -515,6 +552,14 @@ byte CC1101::getState() { // we read 2 times due to errata note
             return (state>>4)&0b00111;
         }
         old_state=state;
+        if (millis() - start > 250) {
+            if (!logged_timeout) {
+                ESP_LOGE(TAG, "Timed out reading CC1101 state.");
+                logged_timeout = true;
+            }
+            return (state>>4)&0b00111;
+        }
+        delay(1);
     }
 }
 
