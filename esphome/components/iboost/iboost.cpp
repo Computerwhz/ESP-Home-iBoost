@@ -66,7 +66,11 @@ namespace esphome {
         static const uint8_t BUDDY_REQUEST_PACKET_LEN = 29;
         static const uint8_t SENDER_EXPORT_PACKET_LEN = 44;
         static const uint8_t SENDER_HEARTBEAT_MIN_LEN = 4;
-        static const uint32_t REQUEST_AFTER_PACKET_DELAY_MS = 50;
+        // The original firmware waits around 1s after the last sender packet
+        // before querying the iBoost main unit. Sending too soon appears to
+        // miss the main unit's listen window even though the sender frame was
+        // received successfully.
+        static const uint32_t REQUEST_AFTER_PACKET_DELAY_MS = 1000;
         static const uint32_t REQUEST_AFTER_PACKET_WINDOW_MS = 2000;
 
         enum {
@@ -111,6 +115,8 @@ namespace esphome {
 
         void iBoost::setup() {
             ESP_LOGI(TAG, "iBoost setup starting");
+            ESP_LOGI(TAG, "Build marker 2026-08-15: sender learn enabled, request window %u-%ums",
+                     REQUEST_AFTER_PACKET_DELAY_MS, REQUEST_AFTER_PACKET_WINDOW_MS);
 
             // Initialize text sensors
             if (heating_mode != nullptr) {
