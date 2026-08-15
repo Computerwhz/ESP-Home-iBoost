@@ -63,6 +63,10 @@ namespace esphome {
                 PACKET_IBOOST = 0x22
         };
 
+        static const uint8_t BUDDY_REQUEST_PACKET_LEN = 29;
+        static const uint8_t SENDER_EXPORT_PACKET_LEN = 44;
+        static const uint8_t SENDER_HEARTBEAT_MIN_LEN = 4;
+
         enum {
             RXSTATE_WAIT_FOR_PACKET,
             RXSTATE_PROCESS_PACKET,
@@ -278,9 +282,16 @@ namespace esphome {
                 //if (digitalRead(D1)) {
 
                 pkt_size = radio.getPacket(packet);
-                if (pkt_size > 0 && radio.crcok()) { // We have a valid packet with some data
+                if (pkt_size >= 3 && radio.crcok()) { // We have a valid packet with some data
                     rxTimer = millis();
                     rxLQI = radio.getLQI();
+                    const char *packet_source = "Unknown";
+                    if (packet[2] == PACKET_BUDDY) packet_source = "Buddy";
+                    else if (packet[2] == PACKET_IBOOST) packet_source = "iBoost";
+                    else if (packet[2] == PACKET_SENDER) packet_source = "Sender";
+                    ESP_LOGI(TAG, "Received %s packet addr=%02x%02x len=%u RSSI=%d LQI=%u",
+                             packet_source, packet[0], packet[1], pkt_size,
+                             radio.getRSSIdbm(), rxLQI);
                     Serial.print("Got packet from ");
                     if (packet[2] == PACKET_BUDDY) Serial.print("Buddy,");
                     else if (packet[2] == PACKET_IBOOST) Serial.print("iBoost,");
@@ -303,15 +314,19 @@ namespace esphome {
                     Serial.print(radio.getRSSIdbm());
                     Serial.print(" LQI="); // for field tests to check the signal quality
                     Serial.println(rxLQI);
-                    if ((packet[2] == PACKET_BUDDY && pkt_size == 29) // buddy request
+                    if ((packet[2] == PACKET_BUDDY && pkt_size == BUDDY_REQUEST_PACKET_LEN)  // buddy request
                         ||
-                        (packet[2] == PACKET_SENDER && pkt_size == 44) // sender packet
+                        (packet[2] == PACKET_SENDER && pkt_size >= SENDER_HEARTBEAT_MIN_LEN)  // sender export or heartbeat packet
                     ) {
                         if (rxLQI < addressLQI) { // is the signal stronger than the previous/none
                             addressLQI = rxLQI;
                             address[0] = packet[0]; // save the address of the packet	0x1c7b; //
                             address[1] = packet[1];
                             addressValid = true;
+                            ESP_LOGI(TAG, "Learned sender address %02x%02x from %s packet len=%u (LQI=%u)",
+                                     address[0], address[1],
+                                     packet[2] == PACKET_BUDDY ? "buddy" : "sender",
+                                     pkt_size, rxLQI);
                             Serial.print("Updated the address to:");
                             sprintf(pbuf, "%02x,%02x", address[0], address[1]);
                             Serial.println(pbuf);
@@ -406,7 +421,8 @@ namespace esphome {
                     // Battery low flag is bit 1 of SENDER packet byte[3]
                     static const uint8_t SENDER_FLAG_BATTERY_LOW = 0x02;
 
-                    batteryLow = (packet[3] & SENDER_FLAG_BATTERY_LOW) != 0;
+                    batteryLow = pkt_size >= SENDER_HEARTBEAT_MIN_LEN &&
+                                 (packet[3] & SENDER_FLAG_BATTERY_LOW) != 0;
 
                     // Inhibit override: race the iBoost main unit by transmitting
                     // an identical-address SENDER packet with all-zero ADC sample
@@ -415,7 +431,7 @@ namespace esphome {
                     // for as long as inhibit is held on. Battery-low flag is
                     // preserved so the receiver still sees sender health
                     // unchanged.
-                    if (inhibitActive) {
+                    if (inhibitActive && pkt_size >= SENDER_EXPORT_PACKET_LEN) {
                         memset(txBuf, 0, sizeof(txBuf));
                         txBuf[1] = packet[0];
                         txBuf[2] = packet[1];
