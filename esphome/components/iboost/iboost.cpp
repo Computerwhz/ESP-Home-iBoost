@@ -72,8 +72,6 @@ namespace esphome {
 
         long today, yesterday, last7, last28, total;
 
-        esphome::cc1101::CC1101 radio(D8, D2);
-
         // used for the periodic pings see below
         uint32_t pingTimer;
         // used for LED blinking when we receive a packet
@@ -126,7 +124,11 @@ namespace esphome {
 
             addressLQI = 255; // set received LQI to lowest value
             addressValid = false;
+        #if defined(USE_ESP32) || defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+            SPI.begin(CC1101_SCK_PIN, CC1101_MISO_PIN, CC1101_MOSI_PIN, CC1101_CSN_PIN);
+        #else
             SPI.begin();
+        #endif
             Serial.println("SPI OK");
             ESP_LOGW(TAG, "SPI OK");
             radio.reset();
@@ -188,8 +190,10 @@ namespace esphome {
             Serial.println("Radio OK");
             radio.setRXstate(); // Set the current state to RX : listening for RF packets
             Serial.println("Radio RX OK");
-            // LED setup. It is importand as we can use the module without serial terminal
-            pinMode(LED_BUILTIN, OUTPUT);
+            // LED setup. It is important as we can use the module without serial terminal.
+            if (IBOOST_LED_PIN >= 0) {
+                pinMode(IBOOST_LED_PIN, OUTPUT);
+            }
             Serial.println("Setup Finished");
             ESP_LOGW(TAG, "Setup Finished");
         }
@@ -218,9 +222,10 @@ namespace esphome {
 
         void iBoost::loop() {
 
-            // Turn on the LED for 200ms without blocking the loop.
-            // The Buildin LED on NodeMCU is ON when LOW
-            digitalWrite(LED_BUILTIN, millis() - ledTimer > 200);
+            // Turn on the LED for 200ms without blocking the loop when one is available.
+            if (IBOOST_LED_PIN >= 0) {
+                digitalWrite(IBOOST_LED_PIN, millis() - ledTimer > 200);
+            }
 
             if (addressValid) {
                 if ((millis() - pingTimer > 10000) || boostRequest) { // ping every 10sec

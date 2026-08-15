@@ -40,21 +40,18 @@ SOFTWARE.
 
 
 *************************************************************************************************
+    Default ESP32 wiring used by this component:
 
+      CC1101        ESP32
 
-    WARNING  : MISO is connected with both D6 and D2. The MCU cannot do digitalRead with MISO(D6)
-    when SPI is active, so we digitalRead(D2) instead
+      CSN           GPIO5
+      CSK(CLK)      GPIO18
+      MISO          GPIO19
+      MOSI          GPIO23
+      GND           GND
+      VCC           3.3V
 
-
-      PIN connections
-   CC1101         NodeMCU
-
-    CSN           D8(CS)
-    CSK(CLK)      D5()
-    MISO          D6(MISO) + D2(for digitalRead) (IMPORTANT CC1101-MISO + D6 + D2 are connected)
-    MOSI          D7(MOSI)
-    GND           GND
-    VCC           3.3V
+    GDO0 / GDO2 are not used by this firmware.
 
 	
 ******************************************************************************************************/
@@ -77,6 +74,29 @@ namespace iboost {
 #define PRINTLN(x, ...) Serial.println(x, ##__VA_ARGS__)
 #define PRINT(x, ...) Serial.print(x, ##__VA_ARGS__)
 
+#if defined(USE_ESP32) || defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+static const uint8_t CC1101_CSN_PIN = 5;
+static const uint8_t CC1101_SCK_PIN = 18;
+static const uint8_t CC1101_MISO_PIN = 19;
+static const uint8_t CC1101_MOSI_PIN = 23;
+#elif defined(USE_ESP8266) || defined(ARDUINO_ARCH_ESP8266) || defined(ESP8266)
+static const uint8_t CC1101_CSN_PIN = D8;
+static const uint8_t CC1101_SCK_PIN = D5;
+static const uint8_t CC1101_MISO_PIN = D2;
+static const uint8_t CC1101_MOSI_PIN = D7;
+#else
+static const uint8_t CC1101_CSN_PIN = SS;
+static const uint8_t CC1101_SCK_PIN = SCK;
+static const uint8_t CC1101_MISO_PIN = MISO;
+static const uint8_t CC1101_MOSI_PIN = MOSI;
+#endif
+
+#ifdef LED_BUILTIN
+static const int IBOOST_LED_PIN = LED_BUILTIN;
+#else
+static const int IBOOST_LED_PIN = -1;
+#endif
+
 
 static const char *const TAG = "iboost";
 
@@ -98,7 +118,7 @@ class iBoost : public PollingComponent {
  
   // Constructor
   //iBoost();
-  iBoost() : PollingComponent(15000){}  // Poll every 15 seconds
+  iBoost() : PollingComponent(15000), radio(CC1101_CSN_PIN, CC1101_MISO_PIN) {}  // Poll every 15 seconds
 
 
   // Override setup() from PollingComponent

@@ -4,10 +4,10 @@ esphome:
   libraries:
     - SPI
     
-esp8266:
-  board: d1_mini
+esp32:
+  board: esp32dev
   framework:
-    version: latest
+    type: arduino
 
     
 external_components:

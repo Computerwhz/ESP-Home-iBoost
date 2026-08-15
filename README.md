@@ -6,20 +6,22 @@ ESPHome Marlec iboost integration
 
 This project will allow you to monitor and control Marlec iBoost+ with Home Assistant.
 
-It is based on a ESP8266 board and a CC1011 868MHz module.
+It is configured here for an ESP32 board with a CC1101 868MHz module.
 
 ## Pin Connections
 
-| CC1101  | NodeMCU       |
-|---------|---------------|
-| CSN     | D8(CS)        |
-| CSK(CLK)| D5()          |
-| MISO    | D6(MISO) + D2 |
-| MOSI    | D7(MOSI)      |
-| GND     | GND           |
-| VCC     | 3.3V          |
+| CC1101           | ESP32   |
+|------------------|---------|
+| VCC              | 3.3V    |
+| GND              | GND     |
+| SCLK / CLK / SCK | GPIO18  |
+| MOSI             | GPIO23  |
+| MISO             | GPIO19  |
+| CSN              | GPIO5   |
+| GDO0             | Not connected |
+| GDO2             | Not connected |
 
-_IMPORTANT:_ `CC1101-MISO` + `D6` + `D2` need to be connected together.  `MISO` is connected with both `D6` and `D2`. The MCU cannot do digitalRead with `MISO(D6)` when SPI is active, so we `digitalRead(D2)` instead
+`GDO0` and `GDO2` are not required by this firmware.
 
 ## CC1101 Module Pinout
 
@@ -82,14 +84,14 @@ When looking at the debug output the bytes from the received packets are printed
 
 You should optimize receive quality for the iBoost main unit (0x22).
 
-When you make a change to `iBoost.cpp` you will need to rebuild and re-flash your ESP8266 device with the new code.
+When you make a change to `iBoost.cpp` you will need to rebuild and re-flash your ESP32 device with the new code.
 
 ## Building the project
 
-To build the project, edit the `iBoost.yaml` and/or create a `secrets.yaml` file and  run:
+To build the project, edit the `iBoost.yaml` and/or create a `secrets.yaml` file and run:
 
 `esphome run iBoost.yaml` from the command line.
 
-The necessary files will automatically be downloaded from this repository.
+The sample `iBoost.yaml` in this repository uses the local `esphome/components` folder, so your local component changes are included in the build.
 
 
