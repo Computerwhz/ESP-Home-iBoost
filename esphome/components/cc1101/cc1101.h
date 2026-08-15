@@ -179,6 +179,10 @@ class CC1101 : public Component {
 		// connect it with MISO with a cable. See the nodeMCU example
 		const byte MISOpin;
 
+		// Optional explicit SPI pins used on architectures like ESP32.
+		const int8_t SCKpin;
+		const int8_t MOSIpin;
+
 		// Usually the default SPI bus of the target architecture. It can be other spi bus
 		// however or SoftwareSPI. See the BluePill_SPI2 for a different configuration
 		SPIClass& spi;
@@ -196,7 +200,7 @@ class CC1101 : public Component {
 
 	//public:
 		CC1101(const byte _csn=SS,
-		const byte _miso=MISO, SPIClass& _spi=SPI);
+		const byte _miso=MISO, const int8_t _sck=-1, const int8_t _mosi=-1, SPIClass& _spi=SPI);
 
 		byte readRegister(byte addr);
 		

@@ -126,19 +126,11 @@ namespace esphome {
 
             addressLQI = 255; // set received LQI to lowest value
             addressValid = false;
-            ESP_LOGI(TAG, "Initializing SPI bus for CC1101");
-        #if defined(USE_ESP32) || defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
-            SPI.begin(CC1101_SCK_PIN, CC1101_MISO_PIN, CC1101_MOSI_PIN, CC1101_CSN_PIN);
-        #else
-            SPI.begin();
-        #endif
-            Serial.println("SPI OK");
-            ESP_LOGW(TAG, "SPI OK");
-            ESP_LOGI(TAG, "Resetting CC1101");
-            radio.reset();
-            Serial.println("RadioReset");
             ESP_LOGI(TAG, "Starting CC1101 at 868.3MHz");
             radio.begin(868.300e6); // Freq=868.3Mhz. Do not forget the "e6"
+            ESP_LOGI(TAG, "SPI OK");
+            Serial.println("SPI OK");
+            Serial.println("RadioReset");
             Serial.println("RadioReg");
             radio.setMaxPktSize(61);
             Serial.println("RadioReg");

@@ -70,8 +70,8 @@ namespace cc1101 {
 
 static const char *const TAG = "cc1101";
 
-CC1101::CC1101(const byte _csn, byte wiredToMisoPin, SPIClass& _spi)
-: CSNpin(_csn),MISOpin(wiredToMisoPin), spi(_spi) {
+CC1101::CC1101(const byte _csn, byte wiredToMisoPin, const int8_t _sck, const int8_t _mosi, SPIClass& _spi)
+: CSNpin(_csn), MISOpin(wiredToMisoPin), SCKpin(_sck), MOSIpin(_mosi), spi(_spi) {
 }
 
 // writes a byte to a register address
@@ -196,7 +196,16 @@ void CC1101::begin(const uint32_t freq) {
     pinMode(MISOpin, INPUT);
     //pinMode(GDO0pin, INPUT);
     pinMode(CSNpin, OUTPUT);
+    digitalWrite(CSNpin, HIGH);
+#if defined(USE_ESP32) || defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+    if (SCKpin >= 0 && MOSIpin >= 0) {
+        spi.begin(SCKpin, MISOpin, MOSIpin, CSNpin);
+    } else {
+        spi.begin();
+    }
+#else
 	spi.begin();
+#endif
     reset();
     // do not comment the following function calls.
     // Every function sets multipurpose registers. some registers

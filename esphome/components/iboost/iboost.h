@@ -118,7 +118,7 @@ class iBoost : public PollingComponent {
  
   // Constructor
   //iBoost();
-  iBoost() : PollingComponent(15000), radio(CC1101_CSN_PIN, CC1101_MISO_PIN) {}  // Poll every 15 seconds
+  iBoost() : PollingComponent(15000), radio(CC1101_CSN_PIN, CC1101_MISO_PIN, CC1101_SCK_PIN, CC1101_MOSI_PIN) {}  // Poll every 15 seconds
 
 
   // Override setup() from PollingComponent
