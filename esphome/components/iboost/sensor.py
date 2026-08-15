@@ -1,5 +1,4 @@
 import esphome.codegen as cg
-import esphome.components.binary_sensor as binary_sensor
 import esphome.components.sensor as sensor
 import esphome.components.text_sensor as text_sensor
 import esphome.config_validation as cv
@@ -7,14 +6,10 @@ from esphome.const import CONF_ID
 from esphome.const import (
     UNIT_WATT, UNIT_WATT_HOURS, UNIT_MINUTE,
     DEVICE_CLASS_POWER, DEVICE_CLASS_ENERGY, DEVICE_CLASS_DURATION,
-    STATE_CLASS_TOTAL_INCREASING, ICON_FLASH
+    STATE_CLASS_TOTAL_INCREASING
 )
+from . import iBoost
 
-DEPENDENCIES = ["cc1101"]
-
-# Define iBoost component namespace
-iboost_ns = cg.esphome_ns.namespace("iboost")
-iBoost = iboost_ns.class_("iBoost", cg.PollingComponent)
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -54,9 +49,6 @@ CONFIG_SCHEMA = cv.Schema(
         # Text Sensors
         cv.Optional("heating_mode"): text_sensor.text_sensor_schema(),
         cv.Optional("heating_warn"): text_sensor.text_sensor_schema(),
-
-        # Binary Sensors
-        cv.Optional("water_tank_hot"): binary_sensor.binary_sensor_schema(device_class="heat"),
     }
 )
 
@@ -78,7 +70,3 @@ async def to_code(config):
     if "heating_warn" in config:
         warn_sensor = await text_sensor.new_text_sensor(config["heating_warn"])
         cg.add(var.set_heating_warn(warn_sensor))  
-
-    if "water_tank_hot" in config:
-        hot_sensor = await binary_sensor.new_binary_sensor(config["water_tank_hot"])
-        cg.add(var.set_water_tank_hot(hot_sensor))

@@ -140,11 +140,12 @@ sensor:
       name: "iBoost Warn"
       icon: "mdi:alert-outline"
 
+binary_sensor:
+  - platform: iboost
+    iboost_id: iboost_iboost_id
     water_tank_hot:
       name: "Water Tank Hot"
-      device_class: heat
       icon: "mdi:water-boiler"
-
 
 
 
