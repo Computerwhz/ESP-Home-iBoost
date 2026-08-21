@@ -232,7 +232,9 @@ bool CC1101::sendPacketSlowMCU(const byte *txBuffer,byte size) {
     }
     byte txbytes = readStatusRegister(CC1101_TXBYTES); // contains Bit:8 FIFO_UNDERFLOW + other bytes FIFO bytes
     if (txbytes!=0 || getState()!=1 ) {
-        if (txbytes) PRINTLN("BYTES IN TX");
+        if (txbytes) {
+            PRINTLN("BYTES IN TX");
+        }
         setIDLEstate();
         strobe(CC1101_SFTX);
         strobe(CC1101_SFRX);
@@ -706,8 +708,11 @@ bool CC1101::sendPacket(const byte *txBuffer, byte size, const uint32_t duration
     }
     byte txbytes = readStatusRegister(CC1101_TXBYTES); // contains Bit:8 FIFO_UNDERFLOW + other bytes FIFO bytes
     if (txbytes!=0 || getState()!=1 ) {
-        if (txbytes) PRINTLN("BYTES IN TX");
-        else PRINTLN("getState()!=RX");
+        if (txbytes) {
+            PRINTLN("BYTES IN TX");
+        } else {
+            PRINTLN("getState()!=RX");
+        }
         setIDLEstate();
         strobe(CC1101_SFTX);
         strobe(CC1101_SFRX);

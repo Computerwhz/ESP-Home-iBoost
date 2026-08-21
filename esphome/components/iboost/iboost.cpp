@@ -70,6 +70,9 @@ namespace esphome {
         static const uint32_t STATUS_LED_BLINK_INTERVAL_MS = 500;
         static const uint32_t POWER_LED_FASTEST_PERIOD_MS = 120;
         static const uint32_t POWER_LED_SLOWEST_PERIOD_MS = 1000;
+        // Slightly stronger TX drive than the previous default without making
+        // a large jump in output power.
+        static const uint8_t IBOOST_TX_POWER_PA_ENTRY = 0xC8;
         // The original firmware waits around 1s after the last sender packet
         // before querying the iBoost main unit. Sending too soon appears to
         // miss the main unit's listen window even though the sender frame was
@@ -183,8 +186,9 @@ namespace esphome {
 
         void iBoost::setup() {
             ESP_LOGI(TAG, "iBoost setup starting");
-            ESP_LOGI(TAG, "Build marker 2026-08-15: sender learn enabled, request window %u-%ums",
-                     REQUEST_AFTER_PACKET_DELAY_MS, REQUEST_AFTER_PACKET_WINDOW_MS);
+            ESP_LOGI(TAG, "Build marker 2026-08-15: sender learn enabled, request window %lu-%lums",
+                     static_cast<unsigned long>(REQUEST_AFTER_PACKET_DELAY_MS),
+                     static_cast<unsigned long>(REQUEST_AFTER_PACKET_WINDOW_MS));
 
             // Initialize text sensors
             if (heating_mode != nullptr) {
@@ -257,7 +261,7 @@ namespace esphome {
             radio.writeRegister(CC1101_PKTCTRL0, 0x05); // Data whitening off Normal mode, use FIFOs for RX and TX CRC calculation in TX and CRC check in RX enabled Variable packet length mode. Packet length configured by the first byte after sync word
             radio.writeRegister(CC1101_ADDR, 0x00); // Address used for packet filtration. Optional broadcast addresses are 0 (0x00) and 255 (0xFF).
             static uint8_t paTable[] = {
-                0xC6,
+                IBOOST_TX_POWER_PA_ENTRY,
                 0x39,
                 0x3A,
                 0x3B,
@@ -288,7 +292,7 @@ namespace esphome {
         void iBoost::set_inhibit(bool v) {
             inhibitActive = v;
             ESP_LOGI(TAG, "Inhibit %s",
-                     v ? "ENABLED — will spoof zero-magnitude SENDER packets"
+                     v ? "ENABLED - will spoof zero-magnitude SENDER packets"
                        : "disabled");
         }
 
@@ -339,8 +343,8 @@ namespace esphome {
                         radio.writeRegister(CC1101_TXFIFO, 0x1d); // this is the packet length
 
                         radio.writeBurstRegister(CC1101_TXFIFO, txBuf + 1, 29); // write the data to the TX FIFO
-                        ESP_LOGI(TAG, "Sending iBoost request 0x%02x to addr %02x%02x after %ums idle",
-                                 request, address[0], address[1], since_last_packet);
+                        ESP_LOGI(TAG, "Sending iBoost request 0x%02x to addr %02x%02x after %lums idle",
+                                 request, address[0], address[1], static_cast<unsigned long>(since_last_packet));
                         radio.strobe(CC1101_STX);
                         delay(5);
                         radio.strobe(CC1101_SWOR);
