@@ -66,6 +66,7 @@ captive_portal:
 sensor:
   - platform: iboost
     id: iboost_iboost_id
+    tx_power_pa_entry: 0xC5
     
     heating_import:
       name: "Net Grid Power"

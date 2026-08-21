@@ -128,6 +128,7 @@ extern long today, yesterday, last7, last28, total;
 
 class iBoost : public PollingComponent {
  public:
+  static const uint8_t DEFAULT_TX_POWER_PA_ENTRY = 0xC5;
  
   // Constructor
   //iBoost();
@@ -154,6 +155,7 @@ class iBoost : public PollingComponent {
     void set_heating_mode(text_sensor::TextSensor *sensor) { heating_mode = sensor; }
     void set_heating_warn(text_sensor::TextSensor *sensor) { heating_warn = sensor; }
     void set_water_tank_hot(binary_sensor::BinarySensor *sensor) { water_tank_hot = sensor; }
+    void set_tx_power_pa_entry(uint8_t value) { tx_power_pa_entry_ = value; }
 
 private:
     sensor::Sensor *heating_import{nullptr};
@@ -167,6 +169,7 @@ private:
     text_sensor::TextSensor *heating_mode{nullptr};
     text_sensor::TextSensor *heating_warn{nullptr};
     binary_sensor::BinarySensor *water_tank_hot{nullptr};
+    uint8_t tx_power_pa_entry_{DEFAULT_TX_POWER_PA_ENTRY};
 
   
   esphome::cc1101::CC1101 radio;

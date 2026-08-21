@@ -70,9 +70,6 @@ namespace esphome {
         static const uint32_t STATUS_LED_BLINK_INTERVAL_MS = 500;
         static const uint32_t POWER_LED_FASTEST_PERIOD_MS = 120;
         static const uint32_t POWER_LED_SLOWEST_PERIOD_MS = 1000;
-        // Slightly stronger TX drive than the previous default without making
-        // a large jump in output power.
-        static const uint8_t IBOOST_TX_POWER_PA_ENTRY = 0xC8;
         // The original firmware waits around 1s after the last sender packet
         // before querying the iBoost main unit. Sending too soon appears to
         // miss the main unit's listen window even though the sender frame was
@@ -189,6 +186,7 @@ namespace esphome {
             ESP_LOGI(TAG, "Build marker 2026-08-15: sender learn enabled, request window %lu-%lums",
                      static_cast<unsigned long>(REQUEST_AFTER_PACKET_DELAY_MS),
                      static_cast<unsigned long>(REQUEST_AFTER_PACKET_WINDOW_MS));
+            ESP_LOGI(TAG, "CC1101 TX power PA entry: 0x%02X", tx_power_pa_entry_);
 
             // Initialize text sensors
             if (heating_mode != nullptr) {
@@ -261,7 +259,7 @@ namespace esphome {
             radio.writeRegister(CC1101_PKTCTRL0, 0x05); // Data whitening off Normal mode, use FIFOs for RX and TX CRC calculation in TX and CRC check in RX enabled Variable packet length mode. Packet length configured by the first byte after sync word
             radio.writeRegister(CC1101_ADDR, 0x00); // Address used for packet filtration. Optional broadcast addresses are 0 (0x00) and 255 (0xFF).
             static uint8_t paTable[] = {
-                IBOOST_TX_POWER_PA_ENTRY,
+                tx_power_pa_entry_,
                 0x39,
                 0x3A,
                 0x3B,

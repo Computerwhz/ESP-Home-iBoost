@@ -10,10 +10,23 @@ from esphome.const import (
 )
 from . import iBoost
 
+CONF_TX_POWER_PA_ENTRY = "tx_power_pa_entry"
+
+
+def validate_tx_power_pa_entry(value):
+    if isinstance(value, str):
+        parsed = value.strip()
+        try:
+            value = int(parsed, 16 if parsed.lower().startswith("0x") else 10)
+        except ValueError as err:
+            raise cv.Invalid("tx_power_pa_entry must be an integer from 0 to 255") from err
+    return cv.int_range(min=0, max=255)(value)
+
 
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(iBoost),
+        cv.Optional(CONF_TX_POWER_PA_ENTRY, default=0xC5): validate_tx_power_pa_entry,
 
         # Numeric Sensors
         cv.Optional("heating_import"): sensor.sensor_schema(
@@ -55,6 +68,7 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])  # Ensure correct ID usage
     await cg.register_component(var, config)
+    cg.add(var.set_tx_power_pa_entry(config[CONF_TX_POWER_PA_ENTRY]))
 
     # Register numeric sensors
     for key in ["heating_import", "heating_power", "heating_today", "heating_yesterday", "heating_last_7", "heating_last_28", "heating_last_gt", "heating_boost_time"]:

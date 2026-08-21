@@ -8,6 +8,21 @@ This project will allow you to monitor and control Marlec iBoost+ with Home Assi
 
 It is configured here for an ESP32 board with a CC1101 868MHz module.
 
+## Transmit power tuning
+
+The CC1101 transmit power byte is now exposed directly in the ESPHome YAML:
+
+```yaml
+sensor:
+  - platform: iboost
+    id: iboost_iboost_id
+    tx_power_pa_entry: 0xC5
+```
+
+The default is `0xC5`, which is a small increase over the previous `0xC6` setting.
+You can raise or lower this value without editing the C++ component, and both decimal
+and `0x..` hex values are accepted.
+
 ## Pin Connections
 
 | CC1101           | ESP32   |
